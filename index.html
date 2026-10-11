@@ -13,33 +13,27 @@
     <h1>Task Tracker Kuliah</h1>
 
     <form id="taskForm" novalidate>
-      <div id="errorBox" class="error-box" role="alert"></div>
-
       <div class="form-group">
         <label for="judulInput">Judul Tugas</label>
-        <input type="text" id="judulInput" placeholder="Contoh: Laporan Akhir Praktikum">
+        <input type="text" id="judulInput" placeholder="Contoh: Laporan Akhir Praktikum" disabled>
       </div>
 
       <div class="form-group">
         <label for="matkulInput">Mata Kuliah</label>
-        <select id="matkulInput" required>
+        <select id="matkulInput" required disabled>
           <option value="">Pilih mata kuliah</option>
         </select>
       </div>
 
       <div class="form-group">
         <label for="deadlineInput">Deadline</label>
-        <input type="date" id="deadlineInput">
+        <input type="date" id="deadlineInput" disabled>
       </div>
 
-      <button type="submit" id="btnSubmit">Tambah Tugas</button>
+      <button type="submit" id="btnSubmit" disabled>Tambah Tugas</button>
     </form>
 
     <section class="toolbar">
-      <label class="search-group" for="searchInput">
-        <span class="visually-hidden">Cari tugas</span>
-        <input type="search" id="searchInput" placeholder="Cari tugas..." autocomplete="off">
-      </label>
       <div class="filters">
         <button type="button" class="filter-btn on" data-filter="semua">Semua</button>
         <button type="button" class="filter-btn" data-filter="aktif">Aktif</button>

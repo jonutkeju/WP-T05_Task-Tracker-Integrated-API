@@ -97,8 +97,7 @@ select:disabled {
   background-color: var(--amber-400);
 }
 
-#btnSubmit:disabled,
-.btn-delete:disabled {
+#btnSubmit:disabled {
   cursor: wait;
   opacity: 0.65;
 }
@@ -124,26 +123,6 @@ select:disabled {
   border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
   gap: 8px;
-}
-
-.search-group {
-  flex: 1 1 100%;
-}
-
-.search-group input {
-  width: 100%;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
 }
 
 .filters {
