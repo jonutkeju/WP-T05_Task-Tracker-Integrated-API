@@ -4,11 +4,15 @@ let activeFilter = "semua";
 let loadState = "loading";
 let loadError = "";
 let isSubmitting = false;
+let searchTerm = "";
+let searchTimer;
+const pendingTaskIds = new Set();
 const filterButtons = document.querySelectorAll(".filter-btn");
 const taskForm = document.getElementById("taskForm");
 const judulInput = document.getElementById("judulInput");
 const matkulInput = document.getElementById("matkulInput");
 const deadlineInput = document.getElementById("deadlineInput");
+const searchInput = document.getElementById("searchInput");
 const errorBox = document.getElementById("errorBox");
 const taskList = document.getElementById("taskList");
 const counterEl = document.getElementById("counter");
@@ -20,6 +24,27 @@ function courseName(course) {
   return typeof course === "string" ? course : course.nama || course.name || course.matkul || "";
 }
 
+async function api(path, options = {}) {
+  const response = await fetch(path, options);
+  const text = await response.text();
+  let data = null;
+
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { message: text };
+    }
+  }
+
+  if (!response.ok) {
+    const message = data?.message || data?.error || data?.pesan;
+    throw new Error(message || `Permintaan gagal (${response.status}).`);
+  }
+
+  return data;
+}
+
 async function loadData() {
   loadState = "loading";
   loadError = "";
@@ -27,8 +52,8 @@ async function loadData() {
 
   try {
     const [taskData, courseData] = await Promise.all([
-      fetch("/api/tugas").then((response) => response.json()),
-      fetch("/api/matkul").then((response) => response.json())
+      api("/api/tugas"),
+      api("/api/matkul")
     ]);
     if (!Array.isArray(taskData) || !Array.isArray(courseData)) {
       throw new Error("Format data dari server tidak valid.");
@@ -83,7 +108,8 @@ function render() {
     .filter((task) => {
       if (activeFilter === "aktif" && task.selesai) return false;
       if (activeFilter === "selesai" && !task.selesai) return false;
-      return true;
+      const searchable = `${task.judul} ${task.matkul || ""}`.toLocaleLowerCase();
+      return searchable.includes(searchTerm);
     })
     .sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
 
@@ -101,6 +127,7 @@ function render() {
     li.className = "task-item";
     if (task.selesai) li.classList.add("is-done");
     li.dataset.id = String(task.id);
+    const isPending = pendingTaskIds.has(li.dataset.id);
 
     const contentDiv = document.createElement("div");
     contentDiv.className = "task-content";
@@ -109,6 +136,7 @@ function render() {
     checkbox.type = "checkbox";
     checkbox.className = "task-checkbox";
     checkbox.checked = Boolean(task.selesai);
+    checkbox.disabled = isPending;
     checkbox.setAttribute("aria-label", `Tandai ${task.judul} selesai`);
 
     const infoDiv = document.createElement("div");
@@ -129,7 +157,8 @@ function render() {
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.className = "btn-delete";
-    deleteButton.textContent = "Hapus";
+    deleteButton.textContent = isPending ? "Memproses..." : "Hapus";
+    deleteButton.disabled = isPending;
     deleteButton.setAttribute("aria-label", `Hapus ${task.judul}`);
 
     li.append(contentDiv, deleteButton);
@@ -166,21 +195,17 @@ async function addTask(event) {
   render();
 
   try {
-    const response = await fetch("/api/tugas", {
+    const result = await api("/api/tugas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    const result = await response.json();
-
-    if (!response.ok) {
-      showError(result.message || "Tugas tidak dapat ditambahkan.");
-      return;
-    }
 
     tasks.push(result.tugas || result.task || result.data || result);
     loadState = "success";
     taskForm.reset();
+    searchTerm = "";
+    searchInput.value = "";
   } catch (error) {
     showError(error.message || "Tugas tidak dapat ditambahkan.");
   } finally {
@@ -190,47 +215,56 @@ async function addTask(event) {
 }
 
 async function updateTask(taskId, completed) {
+  if (pendingTaskIds.has(taskId)) return;
+  const previousTask = tasks.find((task) => String(task.id) === taskId);
+  if (!previousTask) return;
+  const optimisticTask = { ...previousTask, selesai: completed };
+  pendingTaskIds.add(taskId);
+  tasks = tasks.map((task) => String(task.id) === taskId ? optimisticTask : task);
   clearError();
+  render();
 
   try {
-    const response = await fetch(`/api/tugas/${encodeURIComponent(taskId)}`, {
+    const result = await api(`/api/tugas/${encodeURIComponent(taskId)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ selesai: completed })
     });
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.message || "Status tugas tidak dapat diperbarui.");
-    }
-
-    const updatedTask = result.tugas || result.task || result.data || result;
+    const serverTask = result?.tugas || result?.task || result?.data || result;
+    const updatedTask = serverTask && typeof serverTask === "object"
+      ? { ...optimisticTask, ...serverTask }
+      : optimisticTask;
     tasks = tasks.map((task) => String(task.id) === taskId ? updatedTask : task);
-    render();
   } catch (error) {
+    tasks = tasks.map((task) => String(task.id) === taskId ? previousTask : task);
     showError(error.message || "Status tugas tidak dapat diperbarui.");
+  } finally {
+    pendingTaskIds.delete(taskId);
     render();
   }
 }
 
 async function deleteTask(taskId) {
+  if (pendingTaskIds.has(taskId)) return;
+  const previousIndex = tasks.findIndex((task) => String(task.id) === taskId);
+  if (previousIndex < 0) return;
+  const removedTask = tasks[previousIndex];
+  pendingTaskIds.add(taskId);
+  tasks = tasks.filter((task) => String(task.id) !== taskId);
+  loadState = tasks.length === 0 ? "empty" : "success";
   clearError();
+  render();
 
   try {
-    const response = await fetch(`/api/tugas/${encodeURIComponent(taskId)}`, {
+    await api(`/api/tugas/${encodeURIComponent(taskId)}`, {
       method: "DELETE"
     });
-
-    if (!response.ok) {
-      const result = await response.json();
-      throw new Error(result.message || "Tugas tidak dapat dihapus.");
-    }
-
-    tasks = tasks.filter((task) => String(task.id) !== taskId);
-    loadState = tasks.length === 0 ? "empty" : "success";
-    render();
   } catch (error) {
+    tasks.splice(previousIndex, 0, removedTask);
+    loadState = "success";
     showError(error.message || "Tugas tidak dapat dihapus.");
+  } finally {
+    pendingTaskIds.delete(taskId);
     render();
   }
 }
@@ -250,6 +284,14 @@ taskList.addEventListener("click", (event) => {
   if (!deleteButton) return;
   const taskId = deleteButton.closest("li").dataset.id;
   deleteTask(taskId);
+});
+
+searchInput.addEventListener("input", () => {
+  window.clearTimeout(searchTimer);
+  searchTimer = window.setTimeout(() => {
+    searchTerm = searchInput.value.trim().toLocaleLowerCase();
+    render();
+  }, 250);
 });
 
 filterButtons.forEach((button) => {

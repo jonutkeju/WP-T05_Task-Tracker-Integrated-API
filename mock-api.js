@@ -1,5 +1,6 @@
 (function () {
   const nativeFetch = window.fetch.bind(window);
+  let mode = window.sessionStorage.getItem("task-tracker-api-mode") || "normal";
   let tasks = [];
   let nextId = 1;
   const courses = [
@@ -22,6 +23,13 @@
     const requestUrl = input instanceof Request ? input.url : input;
     const url = new URL(requestUrl, window.location.href);
     if (!url.pathname.startsWith("/api/")) return nativeFetch(input, init);
+
+    if (mode === "offline") {
+      throw new TypeError("Failed to fetch");
+    }
+    if (mode === "lambat") {
+      await new Promise((resolve) => window.setTimeout(resolve, 1400));
+    }
 
     const method = (init.method || (input instanceof Request && input.method) || "GET").toUpperCase();
     if (url.pathname === "/api/tugas" && method === "GET") {
@@ -69,6 +77,19 @@
     }
     return jsonResponse({ message: "Endpoint tidak ditemukan." }, 404);
   }
+
+  window.__API = {
+    setMode(nextMode) {
+      if (!["normal", "offline", "lambat"].includes(nextMode)) {
+        throw new Error("Mode harus normal, offline, atau lambat.");
+      }
+      mode = nextMode;
+      window.sessionStorage.setItem("task-tracker-api-mode", mode);
+    },
+    getMode() {
+      return mode;
+    }
+  };
 
   window.fetch = mockFetch;
 })();
