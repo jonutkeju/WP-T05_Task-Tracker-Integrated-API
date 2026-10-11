@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Tracker Kuliah</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="mock-api.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="container">
+    <h1>Task Tracker Kuliah</h1>
+
+    <form id="taskForm" novalidate>
+      <div id="errorBox" class="error-box" role="alert"></div>
+
+      <div class="form-group">
+        <label for="judulInput">Judul Tugas</label>
+        <input type="text" id="judulInput" placeholder="Contoh: Laporan Akhir Praktikum">
+      </div>
+
+      <div class="form-group">
+        <label for="matkulInput">Mata Kuliah</label>
+        <select id="matkulInput" required>
+          <option value="">Pilih mata kuliah</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="deadlineInput">Deadline</label>
+        <input type="date" id="deadlineInput">
+      </div>
+
+      <button type="submit" id="btnSubmit">Tambah Tugas</button>
+    </form>
+
+    <section class="toolbar">
+      <label class="search-group" for="searchInput">
+        <span class="visually-hidden">Cari tugas</span>
+        <input type="search" id="searchInput" placeholder="Cari tugas..." autocomplete="off">
+      </label>
+      <div class="filters">
+        <button type="button" class="filter-btn on" data-filter="semua">Semua</button>
+        <button type="button" class="filter-btn" data-filter="aktif">Aktif</button>
+        <button type="button" class="filter-btn" data-filter="selesai">Selesai</button>
+      </div>
+      <p id="counter" class="counter">0 tugas aktif</p>
+    </section>
+
+    <ul id="taskList" class="task-list"></ul>
+    <p id="emptyMsg" class="empty-msg" role="status" aria-live="polite">Memuat tugas dari server...</p>
+    <button type="button" id="retryLoad" class="retry-button" hidden>Coba lagi</button>
+  </main>
+</body>
+</html>
