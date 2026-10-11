@@ -100,6 +100,16 @@ function render() {
     const li = document.createElement("li");
     li.className = "task-item";
     if (task.selesai) li.classList.add("is-done");
+    li.dataset.id = String(task.id);
+
+    const contentDiv = document.createElement("div");
+    contentDiv.className = "task-content";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "task-checkbox";
+    checkbox.checked = Boolean(task.selesai);
+    checkbox.setAttribute("aria-label", `Tandai ${task.judul} selesai`);
 
     const infoDiv = document.createElement("div");
     infoDiv.className = "task-info";
@@ -114,7 +124,15 @@ function render() {
     metaEl.textContent = `${matkulText}Deadline: ${task.deadline}`;
 
     infoDiv.append(titleEl, metaEl);
-    li.append(infoDiv);
+    contentDiv.append(checkbox, infoDiv);
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "btn-delete";
+    deleteButton.textContent = "Hapus";
+    deleteButton.setAttribute("aria-label", `Hapus ${task.judul}`);
+
+    li.append(contentDiv, deleteButton);
     taskList.appendChild(li);
   });
 }
@@ -171,8 +189,68 @@ async function addTask(event) {
   }
 }
 
+async function updateTask(taskId, completed) {
+  clearError();
+
+  try {
+    const response = await fetch(`/api/tugas/${encodeURIComponent(taskId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ selesai: completed })
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || "Status tugas tidak dapat diperbarui.");
+    }
+
+    const updatedTask = result.tugas || result.task || result.data || result;
+    tasks = tasks.map((task) => String(task.id) === taskId ? updatedTask : task);
+    render();
+  } catch (error) {
+    showError(error.message || "Status tugas tidak dapat diperbarui.");
+    render();
+  }
+}
+
+async function deleteTask(taskId) {
+  clearError();
+
+  try {
+    const response = await fetch(`/api/tugas/${encodeURIComponent(taskId)}`, {
+      method: "DELETE"
+    });
+
+    if (!response.ok) {
+      const result = await response.json();
+      throw new Error(result.message || "Tugas tidak dapat dihapus.");
+    }
+
+    tasks = tasks.filter((task) => String(task.id) !== taskId);
+    loadState = tasks.length === 0 ? "empty" : "success";
+    render();
+  } catch (error) {
+    showError(error.message || "Tugas tidak dapat dihapus.");
+    render();
+  }
+}
+
 taskForm.addEventListener("submit", addTask);
 retryLoad.addEventListener("click", loadData);
+
+taskList.addEventListener("change", (event) => {
+  const checkbox = event.target.closest(".task-checkbox");
+  if (!checkbox) return;
+  const taskId = checkbox.closest("li").dataset.id;
+  updateTask(taskId, checkbox.checked);
+});
+
+taskList.addEventListener("click", (event) => {
+  const deleteButton = event.target.closest(".btn-delete");
+  if (!deleteButton) return;
+  const taskId = deleteButton.closest("li").dataset.id;
+  deleteTask(taskId);
+});
 
 filterButtons.forEach((button) => {
   button.addEventListener("click", () => {

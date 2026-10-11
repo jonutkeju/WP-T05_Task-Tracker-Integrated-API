@@ -46,6 +46,27 @@
       tasks.push(createdTask);
       return jsonResponse(createdTask, 201);
     }
+    const taskRoute = url.pathname.match(/^\/api\/tugas\/([^/]+)$/);
+    if (taskRoute && method === "PATCH") {
+      const task = tasks.find((item) => String(item.id) === decodeURIComponent(taskRoute[1]));
+      if (!task) return jsonResponse({ message: "Tugas tidak ditemukan." }, 404);
+
+      let payload;
+      try {
+        payload = JSON.parse(init.body || "{}");
+      } catch {
+        return jsonResponse({ message: "Format JSON tidak valid." }, 400);
+      }
+
+      task.selesai = Boolean(payload.selesai);
+      return jsonResponse(task);
+    }
+    if (taskRoute && method === "DELETE") {
+      const taskIndex = tasks.findIndex((item) => String(item.id) === decodeURIComponent(taskRoute[1]));
+      if (taskIndex < 0) return jsonResponse({ message: "Tugas tidak ditemukan." }, 404);
+      tasks.splice(taskIndex, 1);
+      return new Response(null, { status: 204 });
+    }
     return jsonResponse({ message: "Endpoint tidak ditemukan." }, 404);
   }
 
