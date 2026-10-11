@@ -1,6 +1,7 @@
 (function () {
   const nativeFetch = window.fetch.bind(window);
   let tasks = [];
+  let nextId = 1;
   const courses = [
     "Network Security",
     "Computer Network",
@@ -28,6 +29,22 @@
     }
     if (url.pathname === "/api/matkul" && method === "GET") {
       return jsonResponse(courses);
+    }
+    if (url.pathname === "/api/tugas" && method === "POST") {
+      let payload;
+      try {
+        payload = JSON.parse(init.body || "{}");
+      } catch {
+        return jsonResponse({ message: "Format JSON tidak valid." }, 400);
+      }
+
+      if (!payload.judul || payload.judul.trim().length < 3 || !payload.deadline || !courses.includes(payload.matkul)) {
+        return jsonResponse({ message: "Judul, mata kuliah, atau deadline tidak valid." }, 400);
+      }
+
+      const createdTask = { ...payload, id: nextId++, selesai: false };
+      tasks.push(createdTask);
+      return jsonResponse(createdTask, 201);
     }
     return jsonResponse({ message: "Endpoint tidak ditemukan." }, 404);
   }

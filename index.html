@@ -13,9 +13,11 @@
     <h1>Task Tracker Kuliah</h1>
 
     <form id="taskForm" novalidate>
+      <div id="errorBox" class="error-box" role="alert"></div>
+
       <div class="form-group">
         <label for="judulInput">Judul Tugas</label>
-        <input type="text" id="judulInput" placeholder="Contoh: Laporan Akhir Praktikum" disabled>
+        <input type="text" id="judulInput" placeholder="Contoh: Laporan Akhir Praktikum" minlength="3" required disabled>
       </div>
 
       <div class="form-group">
@@ -27,7 +29,7 @@
 
       <div class="form-group">
         <label for="deadlineInput">Deadline</label>
-        <input type="date" id="deadlineInput" disabled>
+        <input type="date" id="deadlineInput" required disabled>
       </div>
 
       <button type="submit" id="btnSubmit" disabled>Tambah Tugas</button>

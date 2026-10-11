@@ -3,12 +3,18 @@ let courses = [];
 let activeFilter = "semua";
 let loadState = "loading";
 let loadError = "";
+let isSubmitting = false;
 const filterButtons = document.querySelectorAll(".filter-btn");
+const taskForm = document.getElementById("taskForm");
+const judulInput = document.getElementById("judulInput");
 const matkulInput = document.getElementById("matkulInput");
+const deadlineInput = document.getElementById("deadlineInput");
+const errorBox = document.getElementById("errorBox");
 const taskList = document.getElementById("taskList");
 const counterEl = document.getElementById("counter");
 const emptyMsg = document.getElementById("emptyMsg");
 const retryLoad = document.getElementById("retryLoad");
+const btnSubmit = document.getElementById("btnSubmit");
 
 function courseName(course) {
   return typeof course === "string" ? course : course.nama || course.name || course.matkul || "";
@@ -41,6 +47,12 @@ async function loadData() {
 function render() {
   counterEl.textContent = `${tasks.filter((task) => !task.selesai).length} tugas aktif`;
   retryLoad.hidden = loadState !== "error";
+  const formEnabled = loadState === "success" || loadState === "empty";
+  judulInput.disabled = !formEnabled || isSubmitting;
+  matkulInput.disabled = !formEnabled || isSubmitting;
+  deadlineInput.disabled = !formEnabled || isSubmitting;
+  btnSubmit.disabled = !formEnabled || isSubmitting;
+  btnSubmit.textContent = isSubmitting ? "Mengirim..." : "Tambah Tugas";
   taskList.replaceChildren();
 
   if (loadState === "loading") {
@@ -101,11 +113,65 @@ function render() {
     const matkulText = task.matkul ? `${task.matkul} | ` : "";
     metaEl.textContent = `${matkulText}Deadline: ${task.deadline}`;
 
+    infoDiv.append(titleEl, metaEl);
     li.append(infoDiv);
     taskList.appendChild(li);
   });
 }
 
+function showError(message) {
+  errorBox.textContent = message;
+  errorBox.style.display = "block";
+}
+
+function clearError() {
+  errorBox.textContent = "";
+  errorBox.style.display = "none";
+}
+
+async function addTask(event) {
+  event.preventDefault();
+  const payload = {
+    judul: judulInput.value.trim(),
+    matkul: matkulInput.value,
+    deadline: deadlineInput.value,
+    selesai: false
+  };
+
+  if (payload.judul.length < 3 || !payload.matkul || !payload.deadline) {
+    showError("Isi judul minimal 3 karakter, mata kuliah, dan deadline.");
+    return;
+  }
+
+  clearError();
+  isSubmitting = true;
+  render();
+
+  try {
+    const response = await fetch("/api/tugas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      showError(result.message || "Tugas tidak dapat ditambahkan.");
+      return;
+    }
+
+    tasks.push(result.tugas || result.task || result.data || result);
+    loadState = "success";
+    taskForm.reset();
+  } catch (error) {
+    showError(error.message || "Tugas tidak dapat ditambahkan.");
+  } finally {
+    isSubmitting = false;
+    render();
+  }
+}
+
+taskForm.addEventListener("submit", addTask);
 retryLoad.addEventListener("click", loadData);
 
 filterButtons.forEach((button) => {
